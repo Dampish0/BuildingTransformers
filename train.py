@@ -26,13 +26,14 @@ tokens = [vocab.index(v) for i, v in enumerate(data)]
 print(tokens[:40])
 print(vocab)
 
+maxSteps = 2
 gradAccum = 4
 batchSize = 4
 n_head = 8
 n_layers = 8
 n_embd = 256
 blocksize = 256
-from model import Model
+
 
 model = Model(n_layers,n_embd,n_head,vocab_size).to("cuda")
 
@@ -47,7 +48,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
 
 
-for i in range(300):
+for i in range(maxSteps):
     optimizer.zero_grad()
     for i in range(gradAccum):
         x = torch.stack([torch.tensor(tokens[d * blocksize: (d+1) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
@@ -58,15 +59,18 @@ for i in range(300):
     print(loss.item())
 
 
-generated = torch.tensor([0], device="cuda").unsqueeze(1)
-
-for i in range(10):
+generated = torch.tensor([0], device="cuda").unsqueeze(0)
+from torch import nn
+for i in range(100):
     out = model(generated)
-    pred = out[:,-1,:]
-    pred = torch.softmax(pred, dim=-1)
-    predchar = torch.multinomial(pred, 1)
-    generated = torch.concat([generated, predchar], dim=0)
+    out = out[:,-1,:]
+    
+    out = nn.functional.softmax(out, dim=-1)
+    predchar = torch.multinomial(out, num_samples=1)
+    
+    
+    generated = torch.concat([generated, predchar], dim=-1)
 
 
-outText = [vocab[v] for i, v in enumerate(generated)]
+outText = [vocab[int(v.item())] for i, v in enumerate(generated.squeeze(0))]
 print("".join(outText))
