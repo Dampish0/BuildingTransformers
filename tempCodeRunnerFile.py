@@ -1,0 +1,1 @@
+torch.tril(torch.ones([n_embd, n_embd]))
