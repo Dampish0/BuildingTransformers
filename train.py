@@ -26,6 +26,8 @@ tokens = [vocab.index(v) for i, v in enumerate(data)]
 print(tokens[:40])
 print(vocab)
 
+gradAccum = 4
+batchSize = 4
 n_head = 8
 n_layers = 8
 n_embd = 256
@@ -43,13 +45,28 @@ print(f"total params: {tot//1e6}M params")
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
-#orch.stack()
 
-for i in range(100):
+
+for i in range(300):
     optimizer.zero_grad()
-    x = torch.tensor(tokens[i * blocksize: (i+1) * blocksize], dtype=torch.long).to("cuda")
-    y = torch.tensor(tokens[(i+1) * blocksize:(i+2) * blocksize], dtype=torch.long).to("cuda")
-    out, loss = model(x.unsqueeze(0), y.unsqueeze(0))
-    loss.backward()
+    for i in range(gradAccum):
+        x = torch.stack([torch.tensor(tokens[d * blocksize: (d+1) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
+        y = torch.stack([torch.tensor(tokens[(d+1) * blocksize:(d+2) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
+        out, loss = model(x, y)
+        loss.backward()
     optimizer.step()
     print(loss.item())
+
+
+generated = torch.tensor([0], device="cuda").unsqueeze(1)
+
+for i in range(10):
+    out = model(generated)
+    pred = out[:,-1,:]
+    pred = torch.softmax(pred, dim=-1)
+    predchar = torch.multinomial(pred, 1)
+    generated = torch.concat([generated, predchar], dim=0)
+
+
+outText = [vocab[v] for i, v in enumerate(generated)]
+print("".join(outText))

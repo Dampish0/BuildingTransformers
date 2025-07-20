@@ -19,7 +19,7 @@ class Head(nn.Module):
         k = self.weightK(x)
         q = self.weightQ(x)
         v = self.weightV(x)
-
+        
         h = q @ (torch.transpose(k, 1,2))
         h = h / math.sqrt(self.d_head)
 
