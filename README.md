@@ -1,4 +1,4 @@
-# Trying to math behind attention and learn how to create model architectures  
+# Trying to learn math behind attention and learn how to create model architectures  
   
 The current model works!
 <img width="1274" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />
