@@ -4,7 +4,7 @@ The current model works!
 <img width="1274" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />
 
 
-My goals:
+My goals and what i have completed:
 - ✅ Create a basic transformer model
 
 - ❌ decoder and encoder layers and try to train it to make sure it works.
