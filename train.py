@@ -26,16 +26,16 @@ tokens = [vocab.index(v) for i, v in enumerate(data)]
 print(tokens[:40])
 print(vocab)
 
-maxSteps = 2
-gradAccum = 4
-batchSize = 4
-n_head = 8
-n_layers = 8
-n_embd = 256
+maxSteps = 1000
+gradAccum = 1
+batchSize = 16
+n_head = 12
+n_layers = 12
+n_embd = n_head * 32
 blocksize = 256
 
 
-model = Model(n_layers,n_embd,n_head,vocab_size).to("cuda")
+model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
 
 tot = 0
 for param in model.parameters():
@@ -44,24 +44,25 @@ for param in model.parameters():
 print(f"total params: {tot//1e6}M params")
 
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
 
 
 
 for i in range(maxSteps):
     optimizer.zero_grad()
-    for i in range(gradAccum):
+    for _ in range(gradAccum):
         x = torch.stack([torch.tensor(tokens[d * blocksize: (d+1) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
         y = torch.stack([torch.tensor(tokens[(d+1) * blocksize:(d+2) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
         out, loss = model(x, y)
         loss.backward()
     optimizer.step()
-    print(loss.item())
+    if i % 10 == 0:
+        print(f"step: {i}/{maxSteps}, loss: {loss.item()}")
 
 
 generated = torch.tensor([0], device="cuda").unsqueeze(0)
 from torch import nn
-for i in range(100):
+for i in range(200):
     out = model(generated)
     out = out[:,-1,:]
     
