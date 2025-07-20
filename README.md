@@ -5,12 +5,12 @@ The current model works!
 
 
 My goals:
-- [ ] Create a basic transformer model
+- ✅ Create a basic transformer model
 
-- [ ] decoder and encoder layers and try to train it to make sure it works.
+- ❌ decoder and encoder layers and try to train it to make sure it works.
 
-- [ ] Try to make my own optimizer or just write SGD by manually calculating the gradients, meaning no AutoGrad. Basically doing my own backPropogation
+- ❌ Try to make my own optimizer or just write SGD by manually calculating the gradients, meaning no AutoGrad. Basically doing my own backPropogation
 
-- [ ] try to implement performers according to [https://arxiv.org/abs/2009.14794]
+- ❌ try to implement performers according to [https://arxiv.org/abs/2009.14794]
 
-- [ ] Creating my own sub-word tokenizer.
+- ❌ Creating my own sub-word tokenizer.
