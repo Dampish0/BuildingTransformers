@@ -26,7 +26,7 @@ tokens = [vocab.index(v) for i, v in enumerate(data)]
 print(tokens[:40])
 print(vocab)
 
-maxSteps = 1000
+maxSteps = 200
 gradAccum = 1
 batchSize = 16
 n_head = 12
@@ -45,14 +45,16 @@ print(f"total params: {tot//1e6}M params")
 
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
-
-
+def get_batch():
+    ix = torch.randint(len(tokens) - blocksize, (batchSize,))
+    x = torch.stack([torch.tensor(tokens[i:i+blocksize], dtype=torch.long) for i in ix])
+    y = torch.stack([torch.tensor(tokens[i+1:i+blocksize+1], dtype=torch.long) for i in ix])
+    return x.to("cuda"), y.to("cuda")
 
 for i in range(maxSteps):
     optimizer.zero_grad()
     for _ in range(gradAccum):
-        x = torch.stack([torch.tensor(tokens[d * blocksize: (d+1) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
-        y = torch.stack([torch.tensor(tokens[(d+1) * blocksize:(d+2) * blocksize], dtype=torch.long) for d in range(batchSize)]).to("cuda")
+        x, y = get_batch()
         out, loss = model(x, y)
         loss.backward()
     optimizer.step()

@@ -16,7 +16,7 @@ class Head(nn.Module):
         self.weightK = nn.Linear(n_embd,self.d_head)
         self.weightV = nn.Linear(n_embd,self.d_head)
         if masked:
-            self.register_buffer("mask", (torch.tril(torch.ones([blocksize, blocksize]), 1).unsqueeze(0) == 0))
+            self.register_buffer("mask", (torch.tril(torch.ones([blocksize, blocksize]), diagonal=0).unsqueeze(0) == 0))
 
     def forward(self, x):
         b,t,c = x.size()
@@ -68,17 +68,14 @@ class Block(nn.Module):
         super().__init__()
 
         self.atten = MultiHeadAttention(n_embd, n_head, blocksize, masked=True)
-        self.atten2 = MultiHeadAttention(n_embd, n_head, blocksize, masked=False)
         self.ffwd = mlp(n_embd)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
-        self.ln3 = nn.LayerNorm(n_embd)
 
 
     def forward(self, x):
         x = x + self.atten(self.ln1(x))
-        x = x + self.atten2(self.ln2(x))
-        x = x + self.ffwd(self.ln3(x))
+        x = x + self.ffwd(self.ln2(x))
         return x
     
 
