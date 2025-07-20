@@ -20,7 +20,7 @@ class Head(nn.Module):
         q = self.weightQ(x)
         v = self.weightV(x)
 
-        h = q @ (torch.transpose(k, 0,1))
+        h = q @ (torch.transpose(k, 1,2))
         h = h / math.sqrt(self.d_head)
 
         y = torch.softmax(h, dim=-1)
@@ -45,7 +45,7 @@ class MultiHeadAttention(nn.Module):
 
         z = self.heads[0](x)
         for i in range(self.n_head-1):
-           z = torch.concat([z, self.heads[i+1](x)], dim=1)
+           z = torch.concat([z, self.heads[i+1](x)], dim=2)
 
         k = self.weight0(z)
         return k
@@ -83,17 +83,31 @@ class mlp(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, n_layer, n_embd, n_head, vocab_size):
         super().__init__()
+        self.Layers = nn.ModuleList([Block(n_embd, n_head) for i in range(n_layer)])
+        self.tokEmb = nn.Embedding(vocab_size, n_embd)
+        self.lmHead = nn.Linear(n_embd, vocab_size)
+
+    def forward(self, x, target = None):
         
+        x = self.tokEmb(x)
 
-
-    def forward(self, x):
+        for i in range(len(self.Layers)):
+            x = self.Layers[i](x)
         
-        return
+        x = self.lmHead(x)
 
-testhead = Block(32,2)
-x = torch.randn([1,32], dtype=torch.float32)
-out = testhead(x)
+        if(target != None):
+            b,t,c = x.size()
+            ins = torch.reshape(x, (b*t, c))
+            loss = nn.functional.cross_entropy(input=ins, target=target.view(-1))
+            return x, loss
+        return x
 
-print(out)
+# testhead = Model(4,32,2,128).to("cuda")
+# x = torch.randint(low=0,high=32,size=[1,3000], dtype=torch.long, device="cuda")
+# y = torch.randint(low=0,high=32,size=[1,3000], dtype=torch.long, device="cuda")
+# out = testhead(x, y)
+
+# print(out)
