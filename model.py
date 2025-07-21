@@ -35,7 +35,7 @@ class Head(nn.Module):
             h = h.masked_fill(self.mask[:, :t, :t], float('-inf'))
 
         y = torch.softmax(h, dim=-1)
-
+        
         y = y @ v
 
 
