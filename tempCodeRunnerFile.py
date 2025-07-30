@@ -1,17 +1,15 @@
-import os
-import requests
 import torch
-import numpy as np
-import torch.optim.adamw
-from model import Model
+import torch.distributions.multivariate_normal as dbs
 
-input_file_path = os.path.join(os.path.dirname(__file__), 'input.txt')
-if not os.path.exists(input_file_path):
-    data_url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
-    with open(input_file_path, 'w', encoding='utf-8') as f:
-        f.write(requests.get(data_url).text)
+M = torch.rand([32,64], dtype=torch.float32)
+dim = 0
+s = torch.zeros(dim)
+fn = dbs.MultivariateNormal(s, torch.eye(dim))#.sample()
+omega = 8
+FNS = [torch.cos(),torch.sin()]
 
-with open(input_file_path, "r", encoding="utf-8") as f:
-    data = f.read()
+def Aprox_softmax(x):
+    w = torch.tensor([fn.sample(x.size()) for _ in range(w)], dtype=torch.float32)
+    R = torch.tensor([ FNS[min(i/omega)](w[i].T()*x) for i in range(w*FNS)])
 
-print(len(data)//256)
+    return x
