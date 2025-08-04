@@ -2,7 +2,7 @@ import torch
 import math
 import torch.distributions.multivariate_normal as dbs
 import torch.nn as nn
-
+torch.manual_seed(22)
 dim = 32
 # M = torch.rand([dim], dtype=torch.float32).unsqueeze(0)
 
@@ -12,11 +12,11 @@ fn = dbs.MultivariateNormal(s, torch.eye(dim))#.sample()
 nmr = math.sqrt(dim)*s
 
 
-omega = 4
+m = 4 * 2
 
 def Aprox_softmax(k, q):
     
-    w = torch.randn(omega, dim, device=k.device).t()
+    w = torch.randn(k.shape[-1], dim, device=k.device)
 
     # regularize
     w = math.sqrt(dim) * (w/torch.norm(w))
@@ -28,51 +28,60 @@ def Aprox_softmax(k, q):
     zSqr = kNorm**2 + qNorm**2
 
     print(w.shape, z.shape, k.shape, q.shape)
-    Lcosh = torch.cosh(torch.matmul(z, w))
+    Lcosh = torch.cosh(z @ w)
     A = torch.exp(-zSqr/2)
     
     R = A * Lcosh.mean(dim=-1)
-    
-
-
-
-
-
     return R
 
-class Head(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize):
+def theta(u, R):
+    return torch.concat([torch.cos(u @ R), torch.sin(u @ R)]) / math.sqrt(m)
+
+class Favor(nn.Module):
+    def __init__(self, n_embd, n_head, blocksize, masked=False):
         super().__init__()
         self.d_head = n_embd // n_head
         self.n_embd = n_embd
+        self.masked = masked
+        self.register_buffer("w", torch.randn([self.d_head, m]))
 
         self.weightQ = nn.Linear(n_embd,self.d_head)
         self.weightK = nn.Linear(n_embd,self.d_head)
         self.weightV = nn.Linear(n_embd,self.d_head)
+        if masked:
+            self.register_buffer("mask", (torch.tril(torch.ones([blocksize, blocksize]), diagonal=0).unsqueeze(0) == 0))
 
     def forward(self, x):
-        
+        b,t,c = x.size()
+        # x = b, t , n_embd
         k = self.weightK(x) # n_embd, d_head
         q = self.weightQ(x) # n_embd, d_head
         v = self.weightV(x) # n_embd, d_head
-
-        Aprox_softmax(k,q)
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize):
-        super().__init__()       
-        self.n_head = n_head
-        self.heads = nn.ModuleList([Head(n_embd, n_head, blocksize) for i in range(n_head)])
-        self.weight0 = nn.Linear(n_embd, n_embd)
-
-    def forward(self, x):
-        # b, t, c
-        z = [self.heads[i](x) for i in range(len(self.heads))]
-        z = torch.concat(z, dim=2)
         
+        qP = theta(q, self.w)
+        Kp = theta(k, self.w)
+        print(Kp.shape)
 
-        k = self.weight0(z)
-        return k
+        S = torch.transpose(Kp, 1, 2) @ v
+        print(S.shape)
+
+        exit()
+
+        h = q @ (torch.transpose(k, 1,2)) # b, t, d_head  x  b, d_head, t  =  b, t, t
+        #print(h.shape)
+        h = h / math.sqrt(self.d_head)
+
+        if(self.masked):
+            #forgot masking
+            h = h.masked_fill(self.mask[:, :t, :t], float('-inf'))
+
+        y = torch.softmax(h, dim=-1)
+        
+        y = y @ v
+
+
+        return y
+
     
 
 
@@ -80,7 +89,7 @@ class Block(nn.Module):
     def __init__(self, n_embd, n_head, blocksize):
         super().__init__()
 
-        self.atten = MultiHeadAttention(n_embd, n_head, blocksize)
+        self.atten = Favor(n_embd, n_head, blocksize)
         self.ffwd = mlp(n_embd)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
