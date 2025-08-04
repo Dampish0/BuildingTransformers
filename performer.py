@@ -12,10 +12,11 @@ fn = dbs.MultivariateNormal(s, torch.eye(dim))#.sample()
 nmr = math.sqrt(dim)*s
 
 
-m = 4 * 2
+m = 64
 
 def theta(u, R):
-    return torch.concat([torch.cos(u @ R), torch.sin(u @ R)], dim=-1) / math.sqrt(m)
+    norm = (u ** 2).sum(dim=-1, keepdim=True) / 2
+    return (torch.exp(((u @ R) - norm).clamp(min=-6, max=10)) / math.sqrt(m))
 
 class Favor(nn.Module):
     def __init__(self, n_embd, n_head, blocksize, masked=True):
@@ -24,13 +25,11 @@ class Favor(nn.Module):
         self.n_embd = n_embd
         self.masked = masked
         self.register_buffer("w", torch.randn([self.d_head, m]))
-        self.out_proj = nn.Linear(2 * m, n_embd)  # Add this line
 
         self.weightQ = nn.Linear(n_embd,self.d_head)
         self.weightK = nn.Linear(n_embd,self.d_head)
         self.weightV = nn.Linear(n_embd,self.d_head)
-        if masked:
-            self.register_buffer("mask", (torch.tril(torch.ones([blocksize, blocksize]), diagonal=0).unsqueeze(0) == 0))
+        
 
     def forward(self, x):
         b,t,c = x.size()
@@ -41,20 +40,27 @@ class Favor(nn.Module):
         
         qP = theta(q, self.w)
         kP = theta(k, self.w)
-        print(qP.shape)
+        #print(qP.shape)
         
-        S = torch.transpose(kP, 1, 2) @ v
-        
-        print(S.shape)
-        N = qP @ S
-        print(N.shape)
-        kSum = torch.sum(kP, dim=1).unsqueeze(-1)
+        if self.masked:
+            # code from chatgpt
+            S = torch.einsum('btm,btd->bmd', kP, v)
+            S_prefix_sum = torch.cumsum(S, dim=1)
+            N = torch.einsum('btm,bmd->btd', qP, S_prefix_sum)
 
-        # dot here
-        D = qP @ kSum
-        print(kSum.shape, D.shape)
-        R = N / D
-        print(R.shape)
+            # Denominator
+            k_sum_prefix = torch.cumsum(kP, dim=1)
+            D = torch.einsum('btm,btm->bt', qP, k_sum_prefix).unsqueeze(-1)
+        else:
+            # my code
+            S = torch.transpose(kP, 1, 2) @ v
+            N = qP @ S
+            kSum = torch.sum(kP, dim=1).unsqueeze(-1)
+            D = qP @ kSum
+        #print(kSum.shape, D.shape)
+        R = N / (D.clamp(min=1e-3))
+        
+        #print(R.shape)
         return R
 
     

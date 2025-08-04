@@ -14,7 +14,7 @@ if not os.path.exists(input_file_path):
 with open(input_file_path, "r", encoding="utf-8") as f:
     data = f.read()
 
-print(len(data)//256)
+print(len(data))
 ##data = "data"
 vocab = sorted(list(set(data)))
 vocab_size = len(vocab)
@@ -23,19 +23,21 @@ print(vocab.index('t'))
 
 tokens = [vocab.index(v) for i, v in enumerate(data)]
 
-# print(tokens[:40])
-# print(vocab)
+print(tokens[:40])
+print(vocab)
 
-maxSteps = 800
+maxSteps = 3000
 gradAccum = 1
 batchSize = 16
-n_head = 8
+n_head = 12
 n_layers = 12
-n_embd = n_head * 64
-blocksize = 128
+n_embd = n_head * 32
+blocksize = 256
 
-
+#MHA
 model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
+
+#model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=288).to("cuda")
 
 tot = 0
 for param in model.parameters():
@@ -44,7 +46,7 @@ for param in model.parameters():
 print(f"total params: {tot//1e6}M params")
 
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=8e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
 def get_batch():
     ix = torch.randint(len(tokens) - blocksize, (batchSize,))
     x = torch.stack([torch.tensor(tokens[i:i+blocksize], dtype=torch.long) for i in ix])
@@ -53,25 +55,22 @@ def get_batch():
 
 import time
 for i in range(maxSteps):
+    xo = time.time()
     optimizer.zero_grad()
-    t0 = time.time()
     for _ in range(gradAccum):
         x, y = get_batch()
         out, loss = model(x, y)
         loss.backward()
-    if(i == maxSteps//2):
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = 8e-5
     optimizer.step()
     if i % 10 == 0:
-        t1 = time.time()-t0
-        print(f"step: {i}/{maxSteps}, loss: {loss.item()}, time/step: {t1}s, time left: {t1*(maxSteps-i):.2f}s")
+        t1 = time.time() - xo
+        print(f"step: {i}/{maxSteps}, loss: {loss.item():.6f}, t/step: {t1:.4f}s, time left: {t1 * (maxSteps-i):.2f}")
 
-print("Training done, generating sample:\n")
+
 generated = torch.tensor([0], device="cuda").unsqueeze(0)
 from torch import nn
-for i in range(400):
-    out = model(generated[:, -blocksize:])
+for i in range(200):
+    out = model(generated)
     out = out[:,-1,:]
     
     out = nn.functional.softmax(out, dim=-1)
