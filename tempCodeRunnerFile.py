@@ -1,1 +1,1 @@
-torch.tril(torch.ones([n_embd, n_embd]))
+(torch.transpose(Wdkv, 1,2))
