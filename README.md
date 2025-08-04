@@ -12,14 +12,21 @@ This project is a hands-on exploration of transformer architectures, focusing on
 - [Goals & Progress](#goals--progress)
 - [Findings](#findings)
 
+
+## Results
+All models get the same amount of training steps and same data, the only exception are their model specific parameters for example, LCompression in MLA.  
+  
 MultiHeadAttention:
 <img width="1274" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />
+*Figure 1: MultiHeadAttention loss over time along with time per step aswell with a final output to show the generation of the model*
 
 MLA (LCompression = 576):  
 <img width="769" height="195" alt="image" src="https://github.com/user-attachments/assets/4ddf061f-78ed-4c00-9ff0-caaaaddbbc77" />
+*Figure 2: MLA using the same ammount of Latent space as R1 with loss over time along with time per step aswell with a final output to show the generation of the model*
 
-MLA (LCompression = 288 = 576/2)
+MLA (LCompression = 288 = 576/2):  
 <img width="740" height="425" alt="image" src="https://github.com/user-attachments/assets/1b616ec2-f665-44e8-9bfa-58cae971ae28" />
+*Figure 3: MLA using half of Latent space as R1 with even lower loss. I also include time per step aswell with a final output to show the generation of the model*
 
 ## Goals & Progress
 
