@@ -1,1 +1,1 @@
-torch.tril(torch.ones([n_embd, n_embd]))
+Model(n_layers,n_embd,n_head,vocab_size,blocksize)

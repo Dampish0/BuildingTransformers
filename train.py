@@ -3,7 +3,7 @@ import requests
 import torch
 import numpy as np
 import torch.optim.adamw
-from model import Model
+from MLA import Model
 
 input_file_path = os.path.join(os.path.dirname(__file__), 'input.txt')
 if not os.path.exists(input_file_path):
@@ -26,7 +26,7 @@ tokens = [vocab.index(v) for i, v in enumerate(data)]
 print(tokens[:40])
 print(vocab)
 
-maxSteps = 200
+maxSteps = 3000
 gradAccum = 1
 batchSize = 16
 n_head = 12
@@ -34,8 +34,10 @@ n_layers = 12
 n_embd = n_head * 32
 blocksize = 256
 
+#MHA
+#model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
 
-model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
+model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=288).to("cuda")
 
 tot = 0
 for param in model.parameters():
@@ -51,7 +53,9 @@ def get_batch():
     y = torch.stack([torch.tensor(tokens[i+1:i+blocksize+1], dtype=torch.long) for i in ix])
     return x.to("cuda"), y.to("cuda")
 
+import time
 for i in range(maxSteps):
+    xo = time.time()
     optimizer.zero_grad()
     for _ in range(gradAccum):
         x, y = get_batch()
@@ -59,7 +63,8 @@ for i in range(maxSteps):
         loss.backward()
     optimizer.step()
     if i % 10 == 0:
-        print(f"step: {i}/{maxSteps}, loss: {loss.item()}")
+        t1 = time.time() - xo
+        print(f"step: {i}/{maxSteps}, loss: {loss.item():.6f}, t/step: {t1:.4f}s, time left: {t1 * (maxSteps-i):.2f}")
 
 
 generated = torch.tensor([0], device="cuda").unsqueeze(0)
