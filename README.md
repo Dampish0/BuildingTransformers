@@ -1,9 +1,9 @@
 # Trying to learn math behind attention and learn how to create model architectures  
   
-MultiHeadAttention:
+MultiHeadAttention:  
 <img width="1274" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />
 
-MLA:
+MLA:  
 <img width="770" height="302" alt="image" src="https://github.com/user-attachments/assets/28f4c3ae-0ef0-4811-9fb0-2543d46dbc60" />
 
 My goals and what i have completed:
