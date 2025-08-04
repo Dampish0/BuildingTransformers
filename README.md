@@ -15,9 +15,11 @@ This project is a hands-on exploration of transformer architectures, focusing on
 MultiHeadAttention:
 <img width="1274" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />
 
-MLA:  
+MLA (LCompression = 576):  
 <img width="769" height="195" alt="image" src="https://github.com/user-attachments/assets/4ddf061f-78ed-4c00-9ff0-caaaaddbbc77" />
 
+MLA (LCompression = 288 = 576/2)
+<img width="740" height="425" alt="image" src="https://github.com/user-attachments/assets/1b616ec2-f665-44e8-9bfa-58cae971ae28" />
 
 ## Goals & Progress
 
