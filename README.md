@@ -17,7 +17,7 @@ This project is a hands-on exploration of transformer architectures, focusing on
 All models get the same amount of training steps and same data, the only exception are their model specific parameters for example, LCompression in MLA.  
   
 #### MultiHeadAttention:  
-<img width="1274" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />  
+<img width="800" height="412" alt="image" src="https://github.com/user-attachments/assets/2e738f78-34ae-40b2-b9a2-c34608f8056c" />  
 <p align="center"><em>Figure 1: MultiHeadAttention loss over time along with time per step as well as a final output to show the generation of the model.</em></p>
   
 #### MLA (LCompression = 576):  
