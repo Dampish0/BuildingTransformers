@@ -1,1 +1,1 @@
-(torch.transpose(Wdkv, 1,2))
+Model(n_layers,n_embd,n_head,vocab_size,blocksize)

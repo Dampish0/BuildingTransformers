@@ -4,7 +4,7 @@ import math
 import os
 torch.manual_seed(42)
 
-LCompression = 576
+LCompression = 576//2
 
 class Head(nn.Module):
     def __init__(self, n_embd, n_head, blocksize, masked=False):
@@ -73,6 +73,7 @@ class MultiHeadAttention(nn.Module):
         # self.Wuv = nn.Linear(LCompression, self.d_head)
 
         self.outW = nn.Linear(n_head * LCompression, n_embd)
+
     def forward(self, x):
         # b, t, c
         Wdkv = self.latent(x)

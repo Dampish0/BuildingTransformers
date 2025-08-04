@@ -53,6 +53,12 @@ cd transformers_learning/AttentionIsAllYouNeed
 ## Findings
 From my testing, MLA takes more vram and is larger in parameters for the same hyperparameters as MHA, however it does seem to generate lower loss in same amount of training steps which can be seen in the uploaded images. The vram usage is trippled but we do get slightly lower loss. Either i have made an error in the implementation or the LCompression variable in MLA.py is too high.
 
-For the same hyperparameters in the models we get
-MLA: 80.0M parameters
-MHA: 21.0M parameters
+When i tried to train with half of the latent compression i got even lower loss which is probably because a higher latent space might need longer training to learn how to represent properly.
+
+For the same hyperparameters in the models we get  
+MLA: 80.0M parameters  
+MHA: 21.0M parameters  
+  
+When i halve the latent compression (LCompression) hyperparamter in the top of the MLA.py file. (LCompression = 576/2 = 288)  
+MLA: 47.0M parameters  
+MHA: 21.0M parameters  
