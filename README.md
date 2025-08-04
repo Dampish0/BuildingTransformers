@@ -26,7 +26,9 @@ All models get the same amount of training steps and same data, the only excepti
 
 #### MLA (LCompression = 288 = 576/2):   
 <img width="740" height="425" alt="image" src="https://github.com/user-attachments/assets/1b616ec2-f665-44e8-9bfa-58cae971ae28" />  
-<p align="center"><em>Figure 3: MLA using half of Latent space as R1 with even lower loss. Includes time per step and a final output to show the generation of the model.</em></p>  
+<p align="center"><em>Figure 3: MLA using half of Latent space as R1 with even lower loss. Includes time per step and a final output to show the generation of the model.</em></p>
+
+
 ## Goals & Progress
 
 - ✅ Create a basic transformer model
