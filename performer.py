@@ -35,7 +35,7 @@ def Aprox_softmax(k, q):
     return R
 
 def theta(u, R):
-    return torch.concat([torch.cos(u @ R), torch.sin(u @ R)]) / math.sqrt(m)
+    return torch.concat([torch.cos(u @ R), torch.sin(u @ R)], dim=-1) / math.sqrt(m)
 
 class Favor(nn.Module):
     def __init__(self, n_embd, n_head, blocksize, masked=False):
@@ -44,6 +44,7 @@ class Favor(nn.Module):
         self.n_embd = n_embd
         self.masked = masked
         self.register_buffer("w", torch.randn([self.d_head, m]))
+        self.out_proj = nn.Linear(2*m, n_embd)  # Add this line
 
         self.weightQ = nn.Linear(n_embd,self.d_head)
         self.weightK = nn.Linear(n_embd,self.d_head)
@@ -59,28 +60,23 @@ class Favor(nn.Module):
         v = self.weightV(x) # n_embd, d_head
         
         qP = theta(q, self.w)
-        Kp = theta(k, self.w)
-        print(Kp.shape)
-
-        S = torch.transpose(Kp, 1, 2) @ v
-        print(S.shape)
-
-        exit()
-
-        h = q @ (torch.transpose(k, 1,2)) # b, t, d_head  x  b, d_head, t  =  b, t, t
-        #print(h.shape)
-        h = h / math.sqrt(self.d_head)
-
-        if(self.masked):
-            #forgot masking
-            h = h.masked_fill(self.mask[:, :t, :t], float('-inf'))
-
-        y = torch.softmax(h, dim=-1)
+        kP = theta(k, self.w)
         
-        y = y @ v
+        print(kP.shape, v.shape, b)
+        S = torch.transpose(kP, 1, 2) @ v
+        
 
+        N = qP @ S
 
-        return y
+        kSum = torch.sum(kP, dim=1).unsqueeze(-1)
+
+        print(qP.shape)
+        print(kSum.shape)
+        # dot here
+        D = qP @ kSum
+        print(D.shape)
+        R = N / D
+        return self.out_proj(R)
 
     
 
