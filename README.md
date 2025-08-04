@@ -56,7 +56,7 @@ It is done this way to make things easy, then its just normal training like any 
 ## Installation
 Just clone it and make sure you have pytorch installed and everything should run fine.  
 ```bash
-git clone https://github.com/yourusername/transformers_learning.git
+git clone https://github.com/Dampish0/BuildingTransformers
 cd transformers_learning/AttentionIsAllYouNeed
 ```  
   
