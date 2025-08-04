@@ -13,11 +13,7 @@ class Head(nn.Module):
         self.n_embd = n_embd
         self.masked = masked
 
-        # self.weightQ = nn.Linear(n_embd, self.d_head)
         self.Wd = nn.Linear(n_embd, LCompression)
-        # self.Wuk = nn.Linear(LCompression, self.d_head)
-        # self.weightK = nn.Linear(n_embd,self.d_head)
-        # self.weightV = nn.Linear(n_embd,self.d_head)
         if masked:
             self.register_buffer("mask", (torch.tril(torch.ones([blocksize, blocksize]), diagonal=0).unsqueeze(0) == 0))
 
@@ -26,29 +22,16 @@ class Head(nn.Module):
         
         # x: t x n_embd
         
-        # Wdk: t 
-
-        # print((torch.transpose(self.Wuk(Wdkv), 1,2)).shape, self.Wuk(Wdkv).shape, self.weightQ(x).shape, x.shape)
         
-        # R = self.weightQ.weight @ (torch.transpose(self.Wuk.weight, 0, 1))
-        # exit()
         # # R = WeightQ @ Wuk^T  =>  (n_embd x d_Head)  @ (LC x d_head)T  =>  (n_embd x d_Head)  @ (d_head x LC)  =>  n_embd x L_compression, which is correct
         # # X @ R  =>  (t x n_embd) @ (n_embd x L_compression)  => (t x L_compression), voila we now have our new Q
-
-
-        # q = self.weightQ(x) @ (torch.transpose(self.Wuk(Wdkv), 1,2))
         
-        # # desired outcome for q' is: (t x LCompression)
+        # # desired outcome for q is: (t x LCompression)
 
-
-        # print(self.Wd(x).shape, Wdkv.shape, (torch.transpose(Wdkv, 1,2)).shape)
-        #exit()
         h = self.Wd(x) @ (torch.transpose(Wdkv, 1,2))
-        # print(h.shape)
         h = h / math.sqrt(self.d_head)
 
         if(self.masked):
-            #forgot masking
             h = h.masked_fill(self.mask[:, :t, :t], float('-inf'))
 
         y = torch.softmax(h, dim=-1)
@@ -69,8 +52,6 @@ class MultiHeadAttention(nn.Module):
 
         self.heads = nn.ModuleList([Head(n_embd, n_head, blocksize, masked) for i in range(n_head)])
         self.latent = nn.Linear(n_embd, LCompression)
-        # self.weight0 = nn.Linear(LCompression, n_embd)
-        # self.Wuv = nn.Linear(LCompression, self.d_head)
 
         self.outW = nn.Linear(n_head * LCompression, n_embd)
 
@@ -80,10 +61,7 @@ class MultiHeadAttention(nn.Module):
         
         z = [self.heads[i](x, Wdkv) for i in range(len(self.heads))]
         z = torch.concat(z, dim=2)
-        # print(z.shape)
-        # A = self.Wuv.weight @ self.weight0.weight
-        # k = A(z)
-        # exit()
+        
         return self.outW(z)
     
 
