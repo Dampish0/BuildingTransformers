@@ -4,10 +4,11 @@ import math
 import os
 torch.manual_seed(42)
 
-LCompression = 576//2
+# changed into a parameter into the model for easier use
+#LCompression = 576//2
 
 class Head(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize, masked=False):
+    def __init__(self, n_embd, n_head, blocksize, LCompression, masked=False):
         super().__init__()
         self.d_head = n_embd // n_head
         self.n_embd = n_embd
@@ -45,12 +46,12 @@ class Head(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize, masked=False):
+    def __init__(self, n_embd, n_head, blocksize, LCompression, masked=False):
         super().__init__()       
         self.d_head = n_embd // n_head
         self.n_embd = n_embd
 
-        self.heads = nn.ModuleList([Head(n_embd, n_head, blocksize, masked) for i in range(n_head)])
+        self.heads = nn.ModuleList([Head(n_embd, n_head, blocksize, LCompression, masked) for i in range(n_head)])
         self.latent = nn.Linear(n_embd, LCompression)
 
         self.outW = nn.Linear(n_head * LCompression, n_embd)
@@ -67,10 +68,10 @@ class MultiHeadAttention(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize):
+    def __init__(self, n_embd, n_head, LCompression, blocksize):
         super().__init__()
 
-        self.atten = MultiHeadAttention(n_embd, n_head, blocksize, masked=True)
+        self.atten = MultiHeadAttention(n_embd, n_head, blocksize, LCompression, masked=True)
         self.ffwd = mlp(n_embd)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
@@ -97,9 +98,9 @@ class mlp(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, n_layer, n_embd, n_head, vocab_size, blockSize):
+    def __init__(self, n_layer, n_embd, n_head, vocab_size, blockSize, LCompression = (576//2)):
         super().__init__()
-        self.Layers = nn.ModuleList([Block(n_embd, n_head, blockSize) for i in range(n_layer)])
+        self.Layers = nn.ModuleList([Block(n_embd, n_head, LCompression, blockSize) for i in range(n_layer)])
         self.tokEmb = nn.Embedding(vocab_size, n_embd)
         self.posEmb = nn.Embedding(blockSize, n_embd)
         self.lmHead = nn.Linear(n_embd, vocab_size)

@@ -46,7 +46,11 @@ All models get the same amount of training steps and same data, the only excepti
 ## Usage
 You just have to create an instance of the model from the specific .py file, for example i have MLA.py, model.py and in both of them there is a class named "Model" just instantiate with  
 ```py
+# MHA
 model = Model(n_layers,n_embd,n_head,vocab_size,blocksize)
+
+# MLA
+model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=(576//2))
 ```  
 It is done this way to make things easy, then its just normal training like any other model. 
 > [!WARNING]  

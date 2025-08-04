@@ -34,8 +34,10 @@ n_layers = 12
 n_embd = n_head * 32
 blocksize = 256
 
+#MHA
+#model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
 
-model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
+model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=288).to("cuda")
 
 tot = 0
 for param in model.parameters():
