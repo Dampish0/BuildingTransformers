@@ -26,7 +26,7 @@ tokens = [vocab.index(v) for i, v in enumerate(data)]
 print(tokens[:40])
 print(vocab)
 
-maxSteps = 2000
+maxSteps = 3000
 gradAccum = 1
 batchSize = 16
 n_head = 12
