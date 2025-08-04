@@ -3,7 +3,7 @@ import requests
 import torch
 import numpy as np
 import torch.optim.adamw
-from model import Model
+from performer import Model
 
 input_file_path = os.path.join(os.path.dirname(__file__), 'input.txt')
 if not os.path.exists(input_file_path):

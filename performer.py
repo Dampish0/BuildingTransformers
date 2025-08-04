@@ -14,37 +14,17 @@ nmr = math.sqrt(dim)*s
 
 m = 4 * 2
 
-def Aprox_softmax(k, q):
-    
-    w = torch.randn(k.shape[-1], dim, device=k.device)
-
-    # regularize
-    w = math.sqrt(dim) * (w/torch.norm(w))
-
-    kNorm = torch.norm(k)
-    qNorm = torch.norm(q)
-
-    z = k + q
-    zSqr = kNorm**2 + qNorm**2
-
-    print(w.shape, z.shape, k.shape, q.shape)
-    Lcosh = torch.cosh(z @ w)
-    A = torch.exp(-zSqr/2)
-    
-    R = A * Lcosh.mean(dim=-1)
-    return R
-
 def theta(u, R):
     return torch.concat([torch.cos(u @ R), torch.sin(u @ R)], dim=-1) / math.sqrt(m)
 
 class Favor(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize, masked=False):
+    def __init__(self, n_embd, n_head, blocksize, masked=True):
         super().__init__()
         self.d_head = n_embd // n_head
         self.n_embd = n_embd
         self.masked = masked
         self.register_buffer("w", torch.randn([self.d_head, m]))
-        self.out_proj = nn.Linear(2*m, n_embd)  # Add this line
+        self.out_proj = nn.Linear(2 * m, n_embd)  # Add this line
 
         self.weightQ = nn.Linear(n_embd,self.d_head)
         self.weightK = nn.Linear(n_embd,self.d_head)
@@ -61,31 +41,44 @@ class Favor(nn.Module):
         
         qP = theta(q, self.w)
         kP = theta(k, self.w)
+        print(qP.shape)
         
-        print(kP.shape, v.shape, b)
         S = torch.transpose(kP, 1, 2) @ v
         
-
+        print(S.shape)
         N = qP @ S
-
+        print(N.shape)
         kSum = torch.sum(kP, dim=1).unsqueeze(-1)
 
-        print(qP.shape)
-        print(kSum.shape)
         # dot here
         D = qP @ kSum
-        print(D.shape)
+        print(kSum.shape, D.shape)
         R = N / D
-        return self.out_proj(R)
+        print(R.shape)
+        return R
 
     
+class MultiHeadAttention(nn.Module):
+    def __init__(self, n_embd, n_head, blocksize, masked=True):
+        super().__init__()       
+        self.n_head = n_head
+        self.heads = nn.ModuleList([Favor(n_embd, n_head, blocksize, masked) for i in range(n_head)])
+        self.weight0 = nn.Linear(n_embd, n_embd)
 
+    def forward(self, x):
+        # b, t, c
+        z = [self.heads[i](x) for i in range(len(self.heads))]
+        z = torch.concat(z, dim=2)
+        
+
+        k = self.weight0(z)
+        return k
 
 class Block(nn.Module):
     def __init__(self, n_embd, n_head, blocksize):
         super().__init__()
 
-        self.atten = Favor(n_embd, n_head, blocksize)
+        self.atten = MultiHeadAttention(n_embd, n_head, blocksize)
         self.ffwd = mlp(n_embd)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
