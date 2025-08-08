@@ -6,72 +6,62 @@ torch.manual_seed(42)
 
 # changed into a parameter into the model for easier use
 #LCompression = 576//2
+    
+import torch.nn.functional as F
 
-class Head(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize, LCompression, masked=False):
+class CausalSelfAttentionMLA(nn.Module):
+
+    def __init__(self, n_embd, n_head, blocksize, LCompression, flash=False):
         super().__init__()
         self.d_head = n_embd // n_head
+        self.LComp = LCompression
+
+        self.c_attn = nn.Linear(n_embd, n_embd)
+        self.c_proj = nn.Linear(n_head * LCompression, n_embd)
+        
+
+        self.n_head = n_head
         self.n_embd = n_embd
-        self.masked = masked
-
-        self.Wd = nn.Linear(n_embd, LCompression)
-        if masked:
-            self.register_buffer("mask", (torch.tril(torch.ones([blocksize, blocksize]), diagonal=0).unsqueeze(0) == 0))
-
-    def forward(self, x, Wdkv):
-        b,t,c = x.size()
-        
-        # x: t x n_embd
-        
-        
-        # # R = WeightQ @ Wuk^T  =>  (n_embd x d_Head)  @ (LC x d_head)T  =>  (n_embd x d_Head)  @ (d_head x LC)  =>  n_embd x L_compression, which is correct
-        # # X @ R  =>  (t x n_embd) @ (n_embd x L_compression)  => (t x L_compression), voila we now have our new Q
-        
-        # # desired outcome for q is: (t x LCompression)
-
-        h = self.Wd(x) @ (torch.transpose(Wdkv, 1,2))
-        h = h / math.sqrt(self.d_head)
-
-        if(self.masked):
-            h = h.masked_fill(self.mask[:, :t, :t], float('-inf'))
-
-        y = torch.softmax(h, dim=-1)
-
-        y = y @ Wdkv
-
-        return y
-    
-
-
-
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, n_embd, n_head, blocksize, LCompression, masked=False):
-        super().__init__()       
-        self.d_head = n_embd // n_head
-        self.n_embd = n_embd
-
-        self.heads = nn.ModuleList([Head(n_embd, n_head, blocksize, LCompression, masked) for i in range(n_head)])
         self.latent = nn.Linear(n_embd, LCompression)
+        self.Wd = nn.Linear(n_embd, n_head * LCompression)
 
-        self.outW = nn.Linear(n_head * LCompression, n_embd)
+        
+        self.flash = flash
+        if not self.flash:
+            self.register_buffer("bias", torch.tril(torch.ones(blocksize, blocksize))
+                                        .view(1, 1, blocksize, blocksize))
 
     def forward(self, x):
-        # b, t, c
-        Wdkv = self.latent(x)
-        
-        z = [self.heads[i](x, Wdkv) for i in range(len(self.heads))]
-        z = torch.concat(z, dim=2)
-        
-        return self.outW(z)
+        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
     
+        # calculate query, key, values for all heads in batch and move head forward to be the batch dim
+        k = self.latent(x).unsqueeze(2).expand([-1, -1, self.n_head, self.LComp]).transpose(1, 2) # (B, nh, T, hs)
+        q = self.Wd(x).view(B, T, self.n_head, self.LComp).transpose(1, 2) # (B, nh, T, hs)
+        
+        # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
+        if self.flash:
+            # efficient attention using Flash Attention CUDA kernels
+            y = F.scaled_dot_product_attention(q, k, k, attn_mask=None, is_causal=True)
+        else:
+            # manual implementation of attention
+            att = (q @ k.unsqueeze(1).transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+            att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+            att = F.softmax(att, dim=-1)
+            y = att @ k.unsqueeze(1) # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+            
+        y = y.transpose(1, 2).contiguous().view(B, T, self.n_head * self.LComp) # re-assemble all head outputs side by side
+
+        y = self.c_proj(y)
+        return y
+
+
 
 
 class Block(nn.Module):
-    def __init__(self, n_embd, n_head, LCompression, blocksize):
+    def __init__(self, n_embd, n_head, LCompression, blocksize, flashATTN):
         super().__init__()
 
-        self.atten = MultiHeadAttention(n_embd, n_head, blocksize, LCompression, masked=True)
+        self.atten = CausalSelfAttentionMLA(n_embd, n_head, blocksize, LCompression, flash=flashATTN)
         self.ffwd = mlp(n_embd)
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
@@ -98,9 +88,9 @@ class mlp(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, n_layer, n_embd, n_head, vocab_size, blockSize, LCompression = (576//2)):
+    def __init__(self, n_layer, n_embd, n_head, vocab_size, blockSize, LCompression = (576//2), flashATTN = True):
         super().__init__()
-        self.Layers = nn.ModuleList([Block(n_embd, n_head, LCompression, blockSize) for i in range(n_layer)])
+        self.Layers = nn.ModuleList([Block(n_embd, n_head, LCompression, blockSize, flashATTN) for i in range(n_layer)])
         self.tokEmb = nn.Embedding(vocab_size, n_embd)
         self.posEmb = nn.Embedding(blockSize, n_embd)
         self.lmHead = nn.Linear(n_embd, vocab_size)

@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import torch.optim.adamw
 from MLA import Model
-
+torch.set_float32_matmul_precision('high')
 input_file_path = os.path.join(os.path.dirname(__file__), 'input.txt')
 if not os.path.exists(input_file_path):
     data_url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
@@ -32,13 +32,13 @@ batchSize = 16
 n_head = 12
 n_layers = 12
 n_embd = n_head * 32
-blocksize = 256
+blocksize = 1024
 
 #MHA
 #model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
 
-model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=288).to("cuda")
-
+model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=288, flashATTN=True).to("cuda")
+#model = torch.compile(model)
 tot = 0
 for param in model.parameters():
     tot += param.numel()
@@ -58,8 +58,9 @@ for i in range(maxSteps):
     xo = time.time()
     optimizer.zero_grad()
     for _ in range(gradAccum):
-        x, y = get_batch()
-        out, loss = model(x, y)
+        with torch.amp.autocast("cuda", dtype=torch.bfloat16):
+            x, y = get_batch()
+            out, loss = model(x, y)
         loss.backward()
     optimizer.step()
     if i % 10 == 0:
