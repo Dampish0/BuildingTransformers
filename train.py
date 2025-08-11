@@ -3,7 +3,7 @@ import requests
 import torch
 import numpy as np
 import torch.optim.adamw
-from MLA import Model
+from model import Model
 torch.set_float32_matmul_precision('high')
 input_file_path = os.path.join(os.path.dirname(__file__), 'input.txt')
 if not os.path.exists(input_file_path):
@@ -15,30 +15,39 @@ with open(input_file_path, "r", encoding="utf-8") as f:
     data = f.read()
 
 print(len(data))
-##data = "data"
-vocab = sorted(list(set(data)))
-vocab_size = len(vocab)
 
-print(vocab.index('t'))
+from transformers import AutoTokenizer
 
-tokens = [vocab.index(v) for i, v in enumerate(data)]
 
-print(tokens[:40])
-print(vocab)
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+vocab_size = tokenizer.vocab_size
+tokens = tokenizer.encode(data)
+
+# ##data = "data"
+# vocab = sorted(list(set(data)))
+# vocab_size = len(vocab)
+
+# print(vocab.index('t'))
+
+# tokens = [vocab.index(v) for i, v in enumerate(data)]
+
+# print(tokens[:40])
+# #print(vocab)
 
 maxSteps = 3000
 gradAccum = 1
 batchSize = 16
-n_head = 12
-n_layers = 12
-n_embd = n_head * 32
+n_head = 8
+n_layers = 20 #32
+n_embd = 256 #512
 blocksize = 1024
 
 #MHA
-#model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
+model = Model(n_layers,n_embd,n_head,vocab_size,blocksize).to("cuda")
 
-model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=288, flashATTN=True).to("cuda")
-#model = torch.compile(model)
+#model = Model(n_layers,n_embd,n_head,vocab_size,blocksize, LCompression=256, flashATTN=True, attn_dropout=0.4).to("cuda")
+model = torch.compile(model)
 tot = 0
 for param in model.parameters():
     tot += param.numel()
@@ -46,7 +55,7 @@ for param in model.parameters():
 print(f"total params: {tot//1e6}M params")
 
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=6e-4, fused=True)
 def get_batch():
     ix = torch.randint(len(tokens) - blocksize, (batchSize,))
     x = torch.stack([torch.tensor(tokens[i:i+blocksize], dtype=torch.long) for i in ix])
@@ -70,7 +79,8 @@ for i in range(maxSteps):
 
 generated = torch.tensor([0], device="cuda").unsqueeze(0)
 from torch import nn
-for i in range(200):
+t0 = time.time()
+for i in range(120):
     out = model(generated)
     out = out[:,-1,:]
     
@@ -80,6 +90,10 @@ for i in range(200):
     
     generated = torch.concat([generated, predchar], dim=-1)
 
+#generated = model.generate(torch.tensor([0], device="cuda").unsqueeze(0), 200)
+t1 = time.time() - t0
+print(f"time to generate: {t1}, tokens per second: {200/t1}")
+#outText = "".join([vocab[int(v.item())] for i, v in enumerate(generated.squeeze(0))])
 
-outText = [vocab[int(v.item())] for i, v in enumerate(generated.squeeze(0))]
-print("".join(outText))
+outText = tokenizer.decode(generated.squeeze(0))
+print(outText)

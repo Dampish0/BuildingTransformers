@@ -16,7 +16,7 @@ class CausalSelfAttentionMLA(nn.Module):
         self.d_head = n_embd // n_head
         self.LComp = LCompression
 
-        self.c_attn = nn.Linear(n_embd, n_embd)
+        #self.c_attn = nn.Linear(n_embd, n_embd)
         self.c_proj = nn.Linear(n_head * LCompression, n_embd)
         
 
@@ -44,10 +44,10 @@ class CausalSelfAttentionMLA(nn.Module):
             y = F.scaled_dot_product_attention(q, k, k, attn_mask=None, is_causal=True)
         else:
             # manual implementation of attention
-            att = (q @ k.unsqueeze(1).transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+            att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
             att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
             att = F.softmax(att, dim=-1)
-            y = att @ k.unsqueeze(1) # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+            y = att @ k # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
             
         y = y.transpose(1, 2).contiguous().view(B, T, self.n_head * self.LComp) # re-assemble all head outputs side by side
 
@@ -77,8 +77,8 @@ class mlp(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.act = nn.GELU()
-        self.L1 = nn.Linear(n_embd, n_embd*4)
-        self.L2 = nn.Linear(n_embd*4, n_embd)
+        self.L1 = nn.Linear(n_embd, n_embd*int(2.67))
+        self.L2 = nn.Linear(n_embd*int(2.67), n_embd)
 
     def forward(self, x):
         x = self.L1(x)
@@ -101,6 +101,9 @@ class Model(nn.Module):
         x = self.tokEmb(x)
         pos_emb = self.posEmb(torch.arange(t, device=x.device))
         x = x + pos_emb
+
+        ## add causal convolutional layers?
+
         for i in range(len(self.Layers)):
             x = self.Layers[i](x)
         x = self.lnf(x)
